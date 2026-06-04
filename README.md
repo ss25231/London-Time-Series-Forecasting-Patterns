@@ -21,14 +21,17 @@ The analysis should address the following areas:
 - Projected levels of sport-specific club membership across London as a whole over the next ten years.
 - Forecasts of activity levels for each London borough.
 - Key factors that may reduce individuals’ available free time and subsequently affect participation in physical activity.
+
 **2. Demographic-specific insights**
 - Projected likelihood of participation in specific activities within each London borough.
 - Forecasted participation levels for different demographic groups, including age, gender, ethnicity, disability status and socio-economic groups, and the types of sport or physical activity they are most likely to engage in.
 - Likelihood of participation in physical activity among people with general or long-term health conditions.
+
 **3. Indoor vs outdoor activity**
 - The expected balance of indoor versus outdoor physical activity over the next ten years.
 - Differences in indoor and outdoor activity preferences among people with varying activity levels (from highly active to least active).
 - Relationships between inner vs outer London locations, activity levels and socio-economic factors.
+
 **4. Volunteering in sport**
 - The likelihood of individuals from diverse backgrounds volunteering in sport over the next decade.
 - Forecasts of the types of volunteer roles different demographic groups (including ethnicity, disability status, gender and age) are likely to take on.
