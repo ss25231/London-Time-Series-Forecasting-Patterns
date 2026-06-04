@@ -15,6 +15,7 @@ Active Lives Survey. The final outputs should support London Sport in anticipati
 the next ten years.
 
 The analysis should address the following areas:
+
 **1. Overall participation forecasts**
 - The likelihood of Londoners participating in specific activities over the next decade.
 - Projected levels of physical activity across London as a whole over the next ten years.
