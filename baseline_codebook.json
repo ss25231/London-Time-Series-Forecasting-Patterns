@@ -1,0 +1,111 @@
+{
+  "MEMS7GR_SPORTCOUNT_A01": {
+    "0": "Inactive",
+    "1": "Fairly Active",
+    "2": "Active"
+  },
+  "MEMS7GR_ALL": {
+    "0": "Inactive",
+    "1": "Fairly Active",
+    "2": "Active"
+  },
+  "MEMS7GR_IN_SPORTCOUNT_A01": {
+    "0": "Inactive",
+    "1": "Fairly active",
+    "2": "Active"
+  },
+  "MEMS7GR_OUT_SPORTCOUNT_A01": {
+    "0": "Inactive",
+    "1": "Fairly active",
+    "2": "Active"
+  },
+  "Gend3": {
+    "1": "Male",
+    "2": "Female",
+    "3": "Other"
+  },
+  "Eth7": {
+    "1": "White British",
+    "2": "White Other",
+    "3": "Asian (excl. Chinese)",
+    "4": "Black",
+    "5": "Chinese",
+    "6": "Mixed",
+    "7": "Other ethnic group"
+  },
+  "Eth2": {
+    "1": "White British",
+    "2": "Non White British"
+  },
+  "Disab3": {
+    "1": "Limiting disability",
+    "2": "Non-limiting disability",
+    "3": "No disability"
+  },
+  "Disab2_POP": {
+    "1": "Disability",
+    "2": "No disability"
+  },
+  "Age9": {
+    "1": "14-15",
+    "2": "16-24",
+    "3": "25-34",
+    "4": "35-44",
+    "5": "45-54",
+    "6": "55-64",
+    "7": "65-74",
+    "8": "75-84",
+    "9": "85+"
+  },
+  "Age5_2": {
+    "1": "16-24",
+    "2": "25-34",
+    "3": "35-44",
+    "4": "45-54",
+    "5": "55+"
+  },
+  "NSSEC5": {
+    "1": "NS SEC 1-2: Higher social groups",
+    "2": "NS SEC 3-5: Middle social groups",
+    "3": "NS SEC 6-8: Lower social groups",
+    "4": "NS SEC 9: Students and other / unclassified"
+  },
+  "Educ6": {
+    "1": "Level 4 or above",
+    "2": "Level 3 and equivalents",
+    "3": "Level 2 and equivalents",
+    "4": "Level 1 and below",
+    "5": "Another type of qualification",
+    "6": "No qualifications"
+  },
+  "health": {
+    "1": "Very good",
+    "2": "Good",
+    "3": "Fair",
+    "4": "Bad",
+    "5": "Very bad"
+  },
+  "BMIG": {
+    "1": "Underweight",
+    "2": "Healthy weight",
+    "3": "Overweight",
+    "4": "Obese",
+    "5": "Morbidly obese"
+  },
+  "VolAny": {
+    "0": "No",
+    "1": "Yes"
+  },
+  "VolCnt_GR2": {
+    "0": "None",
+    "1": "One",
+    "2": "Two plus"
+  },
+  "VolFrqB_Pop": {
+    "0": "Not volunteered",
+    "1": "Volunteered once/one-off in the last year",
+    "2": "Volunteered a few times in the last year",
+    "3": "Volunteered at least once a month but not one a week throughout the year",
+    "4": "Volunteered once a week throughout the year"
+  }
+}
