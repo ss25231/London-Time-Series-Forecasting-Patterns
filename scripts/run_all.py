@@ -104,6 +104,43 @@ def build_plan(quick):
 
         ("15", "Model scorecard (metrics for both models)",
          [script("15_model_scorecard.py"), INDIV, "-o", "scorecard_out"], None),
+
+        # ---- validation (professor-review additions) ----
+        # Order matters: benchmarks and the back-test must run before the FINAL
+        # forecast, because the back-test measures the interval calibration that
+        # 09 reads. So 09 runs once above (uncalibrated), the back-test writes
+        # the calibration, then 09 runs again below to deploy calibrated bands.
+        ("16", "Benchmarks (classifier floors + naive/drift forecasts)",
+         [script("16_benchmarks.py"), INDIV, "-o", "benchmark_out"], None),
+
+        ("17", "Rolling-origin back-test (+ interval calibration)",
+         [script("17_backtest.py"), INDIV, "-o", "backtest_out",
+          "--horizon", "1"] + boot, None),
+
+        ("09b", "Re-run forecast with CALIBRATED intervals",
+         [script("09_forecast.py"), INDIV, "-o", "forecast_out"] + boot, None),
+
+        ("18", "Corroboration (skill vs demographic explainability)",
+         [script("18_corroboration.py"), "-o", "corroboration_out",
+          "--backtest", "backtest_out", "--residuals", "model_out"], None),
+
+        ("19", "Explanatory figures (how the methods work)",
+         [script("19_explainer_figures.py"), "-o", "explainer_out"], None),
+
+        ("20", "Evidence figures (that the forecast predicts well)",
+         [script("20_evidence_figures.py"),
+          "backtest_out/backtest_by_borough.csv", "-o", "evidence_out"], None),
+
+        ("21", "Sensitivity checks (shrinkage \u03bb + interval sources)",
+         [script("21_sensitivity.py"), INDIV, "-o", "sensitivity_out"] + boot,
+         None),
+
+        ("22", "Requested explanatory graphs (sensitivity, baseline vs "
+         "flagship, back-test)",
+         [script("22_requested_graphs.py"), INDIV, "-o", "graphs_out",
+          "--panel", "benchmark_out/borough_rate_panel.csv",
+          "--forecast-all", "forecast_out/borough_forecast_all_years.csv",
+          "--backtest", "backtest_out/backtest_by_origin.csv"], None),
     ]
 
 

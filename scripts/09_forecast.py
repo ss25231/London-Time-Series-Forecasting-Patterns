@@ -326,10 +326,40 @@ def main():
             print(f"   {b + 1}/{args.boot}", flush=True)
     if boots:
         B = pd.concat(boots, axis=1)
-        ci = pd.DataFrame({"lo": B.quantile(.05, axis=1),
-                           "hi": B.quantile(.95, axis=1)})
+        # sampling component: SD across bootstrap replicates per borough
+        samp_sd = B.std(axis=1, ddof=1)
+        centre = B.mean(axis=1)
+
+        # ---- interval calibration (process variance from back-testing) ----
+        # The bootstrap captures only SAMPLING uncertainty (who we surveyed).
+        # It omits PROCESS uncertainty (the world wobbles year to year). The
+        # rolling-origin back-test measures that missing piece; we add it in
+        # quadrature so the deployed 90% bands are honest. If the calibration
+        # file is absent, we fall back to sampling-only and say so.
+        process_sd = 0.0
+        cal_note = "sampling only (run 17_backtest.py to calibrate intervals)"
+        try:
+            import json
+            for cand in [Path(args.out).parent / "backtest_out" /
+                         "interval_calibration.json",
+                         Path("backtest_out") / "interval_calibration.json"]:
+                if cand.exists():
+                    cal = json.loads(cand.read_text())
+                    process_sd = float(cal.get("process_sd_pp", 0.0))
+                    cal_note = (f"sampling + measured process SD "
+                                f"{process_sd:.2f}pp (added in quadrature)")
+                    break
+        except Exception:
+            pass
+
+        # total SD = sqrt(sampling^2 + process^2); 90% band = +/- 1.645 * SD
+        total_sd = np.sqrt(samp_sd**2 + process_sd**2)
+        z = 1.645
+        ci = pd.DataFrame({"lo": centre - z * total_sd,
+                           "hi": centre + z * total_sd})
         fc = fc.merge(ci, left_on="borough", right_index=True, how="left")
         fc.loc[fc.wave != horizon[-1], ["lo", "hi"]] = np.nan
+        print(f"   interval basis: {cal_note}")
 
     # ---- London aggregate ----
     wpop = df[df.wave == last_w].groupby("borough").wt_final.sum()
@@ -522,7 +552,7 @@ def main():
             markeredgewidth=1.6, label="forecast (model projection)")
     ax.axvline(last_y, color="#888888", ls=":", lw=1.2)
     ax.text(last_y, ax.get_ylim()[0], " last observed year", rotation=90,
-            va="center", ha="right", fontsize=9, color="#888888")
+            va="bottom", ha="right", fontsize=9, color="#888888")
     if boots:
         lo = np.average(lon_fc.lo, weights=wpop)
         hi = np.average(lon_fc.hi, weights=wpop)
@@ -595,13 +625,12 @@ def main():
         ax.annotate(f"{v:.1f}%", (last_y + 10, v), xytext=(8, 0),
                     textcoords="offset points", ha="left", va="center",
                     fontsize=10.5, color=c, fontweight="bold")
-    
-    # Whole-number year ticks and labels for every year
-    xticks = list(range(min(obs_years), last_y + 11))
+    # whole-number year ticks only (no 2032.5)
+    xticks = obs_years + [last_y + 10]
     ax.set_xticks(xticks)
     ax.set_xticklabels([str(int(x)) for x in xticks], rotation=45, ha="right")
     ax.set_xlim(min(obs_years) - 0.4, last_y + 10 + 2.0)
-    ax.legend(fontsize=8.5, frameon=False, loc="lower left")
+    ax.legend(fontsize=8.5, frameon=False, loc="upper left")
     _style(ax, "Ten-year scenarios (not a point forecast)",
            "survey year (start)", "% of adults")
     fig.tight_layout(); fig.savefig(outdir / "fig14_scenarios.png", dpi=150)

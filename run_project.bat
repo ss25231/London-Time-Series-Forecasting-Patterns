@@ -36,7 +36,7 @@ if %errorlevel% neq 0 (
 
 echo.
 echo ============================================================
-echo   STEP 2 of 2 — running the full pipeline
+echo   STEP 2 of 2 - running the full pipeline (prep, model, forecast, validation, sensitivity, graphs)
 echo ============================================================
 
 REM run_all.py finds scripts in .\scripts or alongside itself.

@@ -206,6 +206,16 @@ Run automatically by `run_all.py`, in this order:
 | 5 | `13_stageC_indoor_outdoor.py` | Brief §3 — indoor vs outdoor by level and by inner/outer London. |
 | 5 | `14_stageD_volunteering.py` | Brief §4 — who volunteers, and in what roles. |
 | 6 | `15_model_scorecard.py` | Full metrics table for both models. |
+| 7 | `16_benchmarks.py` | Classifier floors (prevalence, single-feature) and forecast benchmarks (naïve, drift). |
+| 7 | `17_backtest.py` | **Rolling-origin back-test**: forward forecasts at each origin, per borough; measures forecast skill and the interval calibration. |
+| 7 | `09_forecast.py` *(again)* | Re-run so the deployed intervals pick up the calibration the back-test measured (see two-pass note below). |
+| 7 | `18_corroboration.py` | Tests whether the forecast is accurate for the right reason (skill vs demographic explainability). |
+| 8 | `19_explainer_figures.py` | Plain-language figures: how each method works. |
+| 8 | `20_evidence_figures.py` | Evidence figures: predicted-vs-actual and skill, built on the back-test. |
+| 9 | `21_sensitivity.py` | Robustness checks: the shrinkage λ sweep (forecast barely moves) and the interval-source decomposition (coefficient uncertainty is the smallest source). |
+| 9 | `22_requested_graphs.py` | Three explanatory line graphs: the λ sensitivity line, the flagship forecast vs the naïve benchmark across years, and the back-test error comparison. |
+
+**Two-pass ordering (important).** The forecasting engine (`09`) runs **twice**. The first run produces the central forecasts. The back-test (`17`) then measures how much year-to-year uncertainty the intervals were missing and writes `backtest_out/interval_calibration.json`. The second run of `09` reads that file and widens the deployed intervals so their 90% bands are honest. The central forecasts are identical on both runs — only the interval widths change. `run_all.py` handles this ordering automatically.
 
 Three checks run automatically and will flag or halt the pipeline if they
 fail: the activity classification must match Sport England's published
@@ -226,6 +236,13 @@ forecast must begin at the last observed value.
 | Top-10 / least-5 boroughs | `forecast_out/figX2_*`, `figX3_*` |
 | Brief §1–4 figures and tables | `stageA_out/` … `stageD_out/` |
 | Exploratory & prediction visuals | `viz_out/` |
+| Benchmark floors (classifier + forecast) | `benchmark_out/classifier_floors.csv` |
+| Back-test results & skill, interval calibration | `backtest_out/` (`backtest_by_origin.csv`, `backtest_skill.png`, `interval_calibration.json`) |
+| Corroboration (right-reason evidence) | `corroboration_out/corroboration_scatter.png` |
+| Explanatory figures (how it works) | `explainer_out/` |
+| Evidence figures (that it works) | `evidence_out/` (`evid_pred_vs_actual.png` etc.) |
+| Sensitivity & interval-source checks | `sensitivity_out/` (`sens_lambda.png`, `sens_variance_sources.png`) |
+| Explanatory line graphs | `graphs_out/` (`req_sensitivity_line.png`, `req_baseline_vs_flagship.png`, `req_backtest.png`) |
 | How long each stage took | `pipeline_runtime.txt` |
 
 Figures prefixed `figX` are the standalone, themed charts (one message per
@@ -255,6 +272,25 @@ figure). Every figure carries a short caption describing what it shows.
 The model scorecard (real data): **test accuracy 0.67, AUC 0.70, train–CV
 accuracy gap 0.002** — the tiny gap being the quantitative proof the model is
 not overfitting.
+
+**Forecast validation (real data).** The forecast is not merely produced but
+tested. Three results establish it:
+
+- **Skill +0.20** — in rolling-origin back-testing, the forecast reduces
+  borough error by about a fifth versus assuming no change, at every clean
+  origin (mean error 2.7pp vs 3.4pp for naïve).
+- **Coverage 94%** — the 90% intervals were found over-confident (53%) and
+  recalibrated against measured out-of-sample error; coverage now sits near
+  90%, erring slightly conservative.
+- **Correlation +0.74** — the forecast is accurate for the right reason: it
+  predicts best on the boroughs whose activity is demographically explained.
+
+Two robustness checks close the remaining questions a specialist would ask. The
+shrinkage constant λ is shown not to matter — the London forecast moves just
+**0.04 points** across its whole range, and even the most sensitive borough
+moves only **1.3 points**. And the uncertainty range is decomposed into its
+three sources, confirming the model's own coefficient uncertainty (**0.35 pp**)
+is the smallest; year-to-year process variation (**5.66 pp**) dominates.
 
 ---
 
@@ -297,7 +333,9 @@ know:
   defects.
 - **The forecast improves with each added year.** More non-pandemic data firms
   up the behavioural trend, so the long-run scenarios become less speculative
-  over time. This is a standing capability, not a one-off analysis.
+  over time. This is a standing capability, not a one-off analysis. Each added
+  year also gives the rolling-origin back-test one more origin, so the
+  validation strengthens as the series grows.
 
 ---
 

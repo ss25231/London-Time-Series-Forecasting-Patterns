@@ -30,7 +30,7 @@ $PY -m pip install pandas numpy scikit-learn lightgbm matplotlib \
 
 echo
 echo "============================================================"
-echo "  STEP 2 of 2 — running the full pipeline"
+echo "  STEP 2 of 2 - running the full pipeline (prep, model, forecast, validation, sensitivity, graphs)"
 echo "============================================================"
 
 # run_all.py finds scripts in ./scripts or alongside itself.
