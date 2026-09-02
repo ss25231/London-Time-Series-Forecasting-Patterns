@@ -1,0 +1,24 @@
+Active Lives London — pipeline runtime
+mode: full
+
+parse      ok                15s  Parse the data dictionaries
+profile    ok                14s  Profile the waves (variable availability, breaks)
+harmonise  ok                19s  Harmonise eight waves -> individual dataset
+dataset2   ok             6m 14s  Build the aggregated cell panel
+05         ok                32s  Propensity model + diagnostics
+06         ok             1m 09s  Composition vs place decomposition
+07         ok                 2s  Target feasibility screening
+08         ok                29s  Multi-target ablation (provision gradient)
+09         ok             7m 23s  Forecasting engine (London + boroughs + scenarios)
+10         ok             1m 56s  Exploratory + prediction visualisations
+11         ok            37m 14s  Stage A — participation forecasts
+12         ok                37s  Stage B — demographic forecasts
+13         ok                 8s  Stage C — indoor vs outdoor
+14         ok                11s  Stage D — volunteering
+15         ok                56s  Model scorecard (metrics for both models)
+16         ok                 2s  Benchmarks (classifier floors + naive/drift forecasts)
+17         ok            42m 17s  Rolling-origin back-test (+ interval calibration)
+09b        ok             4m 29s  Re-run forecast with CALIBRATED intervals
+18         ok                 1s  Corroboration (skill vs demographic explainability)
+19         ok                 1s  Explanatory figures (how the methods work)
+20         ok                 1s  Evidence figures (that the forecast predicts well)
