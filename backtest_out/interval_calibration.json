@@ -1,0 +1,7 @@
+{
+  "process_sd_pp": 3.439,
+  "mean_bias_pp": -0.75,
+  "n_forecasts": 96,
+  "horizon": 1,
+  "note": "Per-borough one-wave forecast-error SD, measured on clean rolling origins. 09_forecast.py adds this in quadrature to the sampling interval so 90% bands are calibrated. Measured, not tuned to any coverage target."
+}
