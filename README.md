@@ -9,6 +9,17 @@ Prepared for a London-based non-profit sports organisation.
 
 ---
 
+> **Note on contributions and commit history.** Because the four workstreams
+> had little interdependency, the git history shows relatively few commits,
+> most made by a single member. This reflects how the team worked rather than
+> the distribution of effort: all four members independently developed and
+> tested separate modelling approaches to establish which performed best. We
+> then took the strongest approach forward, chosen on a combination of runtime,
+> accuracy and error rates. Every member contributed substantially to the
+> project.
+
+---
+
 ## Table of contents
 
 - [What this project does](#what-this-project-does)
@@ -105,48 +116,96 @@ pip install pandas numpy scikit-learn lightgbm matplotlib pyarrow \
 
 ## Project layout
 
+The repository has two states: **before** you run the pipeline (the files you
+start with) and **after** (the same files plus every output folder the run
+generates). Both are shown below.
+
+### Before running — the original repository
+
+These are the files and folders that ship with the project. Nothing here is
+generated; this is what you begin with.
+
 ```
 project/
-├── run_project.bat            ← Windows: install + run everything
-├── run_project.sh             ← macOS/Linux: install + run everything
+├── run_project.bat            ← Windows: install dependencies + run everything
+├── run_project.sh             ← macOS/Linux: install dependencies + run everything
 ├── README.md                  ← this file
 │
-├── dictionaries/              ← YOU provide: 8 data-dictionary files
-├── csvs/                      ← YOU provide: 8 annual CSV extracts
+├── csvs/                      ← YOU provide: 8 annual Active Lives CSV extracts
+├── dictionaries/              ← YOU provide: 8 matching data-dictionary files
 │
-├── scripts/                   ← all pipeline code
-│   ├── run_all.py             ← runs every stage in order, with timing
-│   ├── viz_theme.py           ← shared chart style (imported, not run)
-│   │
-│   ├── parse_dictionaries.py  ← stage 0
-│   ├── profile_waves.py       ← stage 0
-│   ├── harmonise_waves.py     ← stage 1
-│   ├── 04_build_dataset2.py   ← stage 1
-│   ├── 05_propensity_model.py ← stage 2
-│   ├── 06_composition_vs_place.py
-│   ├── 07_target_feasibility.py
-│   ├── 08_multi_target_ablation.py
-│   ├── 09_forecast.py         ← stage 3 (the forecasting engine)
-│   ├── 10_visualise.py        ← stage 4
-│   ├── 11_stageA_participation.py   ← brief section 1
-│   ├── 12_stageB_demographics.py    ← brief section 2
-│   ├── 13_stageC_indoor_outdoor.py  ← brief section 3
-│   ├── 14_stageD_volunteering.py    ← brief section 4
-│   └── 15_model_scorecard.py  ← model metrics table
+├── LaTeX/                     ← the written dissertation report
+│   ├── DataScience_UoB_MSc_thesis(2).tex   ← the report source
+│   ├── dissertation.cls       ← document class / formatting
+│   ├── sample_bibtex.bib      ← bibliography
+│   ├── logo_uob_color.pdf     ← university logo used on the title page
+│   └── figures/               ← all figures used in the report
 │
-└── (output folders, created on run)
-    ├── parsed/                ← dictionary output + wave manifest
-    ├── model_out/             ← model diagnostics + figures
-    ├── forecast_out/          ← forecasts, scenarios, figures
-    ├── viz_out/               ← exploratory + prediction figures
-    ├── stageA_out/ … stageD_out/   ← the four brief sections
-    ├── scorecard_out/         ← model_scorecard.csv / .md
-    └── pipeline_runtime.txt   ← per-stage and total timing
+└── scripts/                   ← all pipeline code
+    ├── run_all.py             ← runs every stage in order, with timing
+    ├── viz_theme.py           ← shared chart style (imported, never run directly)
+    │
+    ├── parse_dictionaries.py       ← stage 0: read the dictionaries
+    ├── profile_waves.py            ← stage 0: profile the years, flag breaks
+    ├── harmonise_waves.py          ← stage 1: build the individual dataset
+    ├── 04_build_dataset2.py        ← stage 1: build the cell panel
+    ├── 05_propensity_model.py      ← stage 2: the propensity model
+    ├── 06_composition_vs_place.py  ← stage 2: composition vs place
+    ├── 07_target_feasibility.py    ← stage 2: which targets are forecastable
+    ├── 08_multi_target_ablation.py ← stage 2: the provision gradient
+    ├── 09_forecast.py              ← stage 3: the forecasting engine
+    ├── 10_visualise.py             ← stage 4: exploratory figures
+    ├── 11_stageA_participation.py  ← brief section 1: participation
+    ├── 12_stageB_demographics.py   ← brief section 2: demographics
+    ├── 13_stageC_indoor_outdoor.py ← brief section 3: indoor vs outdoor
+    ├── 14_stageD_volunteering.py   ← brief section 4: volunteering
+    ├── 15_model_scorecard.py       ← model metrics table
+    ├── 16_benchmarks.py            ← validation: benchmark floors
+    ├── 17_backtest.py              ← validation: rolling-origin back-test
+    ├── 18_corroboration.py         ← validation: right-reason check
+    ├── 19_explainer_figures.py     ← plain-language method figures
+    ├── 20_evidence_figures.py      ← evidence-the-forecast-works figures
+    ├── 21_sensitivity.py           ← robustness: shrinkage + interval sources
+    └── 22_requested_graphs.py      ← explanatory line graphs
+```
+
+### After running — the folders the pipeline generates
+
+Running `run_project.bat` (or `run_project.sh`) creates all of the following.
+Every folder below is **generated output** — none of it exists before the run,
+and the whole set can be deleted and regenerated at any time.
+
+```
+project/
+│   … (all of the original files above, unchanged) …
+│
+├── dataset1_individual.parquet   ← the cleaned people-level dataset (135,497 rows)
+├── dataset2_cells.parquet        ← the aggregated borough × demographic panel
+│
+├── parsed/                    ← dictionary lookups + wave manifest        (stage 0)
+├── model_out/                 ← model diagnostics, residuals, figures     (stage 2)
+├── forecast_out/              ← forecasts, scenarios, borough figures     (stage 3)
+├── viz_out/                   ← exploratory and prediction figures        (stage 4)
+├── stageA_out/                ← brief section 1: participation figures/CSVs
+├── stageB_out/                ← brief section 2: demographics figures/CSVs
+├── stageC_out/                ← brief section 3: indoor vs outdoor
+├── stageD_out/                ← brief section 4: volunteering
+├── scorecard_out/             ← model_scorecard.csv / .md                 (stage 6)
+├── benchmark_out/             ← classifier floors + borough rate panel    (stage 7)
+├── backtest_out/              ← back-test results + interval calibration  (stage 7)
+├── corroboration_out/         ← the right-reason scatter + CSV            (stage 7)
+├── explainer_out/             ← plain-language method figures             (stage 8)
+├── evidence_out/              ← predicted-vs-actual and skill figures     (stage 8)
+├── sensitivity_out/           ← shrinkage sweep + interval-source figures (stage 9)
+├── graphs_out/                ← the explanatory line graphs               (stage 9)
+└── pipeline_runtime.txt       ← per-stage and total timing
 ```
 
 > **Note.** The scripts also run fine sitting directly in the project root
-> instead of a `scripts/` folder — the runner checks both. Keep
-> `viz_theme.py` beside the stage scripts; it is imported by the figure code.
+> instead of a `scripts/` folder — the runner checks both. Keep `viz_theme.py`
+> beside the stage scripts; it is imported by the figure code. The `LaTeX/`
+> folder is independent of the pipeline: it holds the written report and is not
+> read or modified by any script.
 
 ---
 
