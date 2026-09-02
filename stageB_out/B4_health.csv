@@ -1,0 +1,14 @@
+measure,group,n,active_%
+Self-rated health,Very good health,18320,76.1580499518948
+Self-rated health,Good,38798,66.81120818772345
+Self-rated health,Fair,17495,53.05321121463717
+Self-rated health,Bad,3360,36.39118331113806
+Self-rated health,Very bad,1005,20.40456000003218
+"Long-term condition
+(among disabled)",reports it,7055,43.902388701545966
+"Long-term condition
+(among disabled)",does not,125265,64.83192732283824
+"Mental-health condition
+(among disabled)",reports it,6444,53.94758380706038
+"Mental-health condition
+(among disabled)",does not,125876,64.35690551949261

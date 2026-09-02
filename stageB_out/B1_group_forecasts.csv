@@ -1,0 +1,19 @@
+dimension,group,n,observed,forecast_3yr,scen_composition,scen_trend,scen_reverts
+Age,16-24,11110,69.7,69.6,68.2,70.5,66.2
+Age,25-44,53216,67.6,67.9,66.0,68.3,64.0
+Age,45-64,43555,62.5,62.8,61.4,63.7,59.3
+Age,65+,26289,49.2,50.4,49.4,51.7,47.3
+Gender,Male,58849,66.1,66.3,64.9,67.2,62.8
+Gender,Female,75875,61.1,61.5,59.8,62.1,57.7
+Ethnicity,White British,68903,68.5,68.9,67.7,70.0,65.6
+Ethnicity,White Other,20689,68.3,68.3,66.6,68.9,64.5
+Ethnicity,Asian,20283,55.6,56.3,55.1,57.4,53.1
+Ethnicity,Black,8682,55.5,57.0,55.7,58.0,53.6
+Ethnicity,Mixed/Other,7759,64.9,65.2,64.3,66.6,62.2
+Socio-economic group,Higher,77300,72.7,73.0,71.2,73.5,69.2
+Socio-economic group,Middle,23178,61.0,61.4,59.8,62.1,57.7
+Socio-economic group,Lower,12397,49.8,50.2,48.8,51.1,46.7
+Socio-economic group,Student/Other,12588,65.1,65.4,63.8,66.1,61.7
+Disability,Disabled (limiting),18476,47.7,48.1,46.7,49.1,44.7
+Disability,"Condition, not limiting",19531,66.6,66.9,65.3,67.6,63.2
+Disability,No disability,88353,67.0,67.3,65.7,68.0,63.6
