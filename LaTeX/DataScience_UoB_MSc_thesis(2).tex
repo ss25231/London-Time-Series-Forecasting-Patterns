@@ -33,7 +33,16 @@
                       type={},
                 % the year of submission
                       year={2021}]{dissertation}
-
+\usepackage{float}
+\usepackage{placeins}
+\usepackage{booktabs}
+\usepackage{float}
+\usepackage{subcaption}
+\usepackage{caption}
+\usepackage{tabularx}
+\usepackage{threeparttable}
+\usepackage{array}
+\usepackage[justification=centering]{caption}
 \begin{document}
 
 % =============================================================================
@@ -392,27 +401,25 @@ Another study employed various machine learning techniques to predict adherence 
 These gaps motivate the methodology described in subsequent chapters. The project begins with the harmonisation of the survey data, followed by the development and validation of the propensity model, examines the association between demographics and borough, and uses these components within the forecasting framework.
 
 % -----------------------------------------------------------------------------
-
 \chapter{Methodology}
 \label{chap:methodology}
 
+\FloatBarrier
 \section{Overall Project Workflow}
 
 \noindent
 This project followed a structured five-stage machine learning pipeline, transforming raw Active Lives Survey data into borough-level forecasts across four analytical pillars: \emph{P1} overall physical activity participation, \emph{P2} demographic-specific participation, \emph{P3} indoor versus outdoor activity, and \emph{P4} sport volunteering. The workflow was designed to ensure that data quality issues were addressed before modelling, enabling the development of reliable, interpretable and generalisable predictive models.
 
 \begin{description}
-\item[Stage 1 -- Data Preparation and Harmonisation:] Eight structurally inconsistent annual survey files were merged into a single individual-level dataset. Preprocessing was required to standardise variable names, harmonise borough identifiers using permanent ONS GSS codes, resolve inconsistencies in Local Authority coding, and handle sentinel/missing values.
+\item[Stage 1 -- Data Preparation and Harmonisation:] eight structurally inconsistent annual survey files were merged into a single individual-level dataset. Preprocessing was required to standardise variable names, harmonise borough identifiers using permanent ONS GSS codes, resolve inconsistencies in Local Authority coding, and handle sentinel/missing values.
 \item[Stage 2 -- Exploratory Data Analysis:] a quality-assurance EDA targeting six specific risk areas associated with a multi-wave government survey: merge integrity, sentinel contamination, missingness, borough coverage, cross-year consistency and distributional plausibility.
 \item[Stage 3 -- Feature Engineering:] the cleaned master dataset, containing 610 variables, was reduced to a compact model-ready dataset, with the ordinal \texttt{Activity\_Level} target derived and demographic predictors consolidated.
-\item[Stage 4 -- Machine Learning Modelling:] Four complementary modelling approaches were developed in parallel to address different components of the problem: an individual-level driver model (CatBoost with SHAP), a borough-forecasting propensity model (ordinal logistic regression benchmarked against LightGBM), a demographic segmentation and prediction pipeline (K-Modes clustering with supervised classifiers), and a fully probabilistic borough random-effects model (Bayesian Hierarchical Ordinal Logistic Regression).
-\item[Stage 5 -- Forecasting and Scenario Analysis:] combines the outputs of the predictive models to generate borough- and London-level forecasts. Forecasts are produced by integrating estimated participation propensities with projected demographic compositions and behavioural trends, allowing overall changes to be decomposed into demographic composition effects and behavioural effects. Activity-type perturbation decomposes the aggregate active rate by the nine Sport England activity-method groups, isolating each activity's marginal contribution to the 150-minute threshold by removing its minutes and re-testing participation. Walking is found to be the dominant load-bearing activity at London level, while a borough-level comparison shows over-performing boroughs leaning more on cycling and adventure/water sports, and under-performing boroughs relying more heavily on walking alone -- an indicative, infrastructure-linked signature rather than a causal claim.
+\item[Stage 4 -- Machine Learning Modelling:] our separate modelling approaches were developed and evaluated: CatBoost with SHAP for interpreting individual-level predictors, LightGBM for borough-level forecasting, K-Modes clustering with supervised classifiers for demographic segmentation, and a Bayesian Hierarchical Ordinal model for assessing borough-level variation and uncertainty.
+\item[Stage 5 -- Forecasting and Scenario Analysis:] combines model outputs with projected demographic composition and behavioural trends to produce borough- and London-level forecasts. Changes are decomposed into demographic and behavioural effects, while activity-type analysis identifies walking as the main contributor to the 150-minute threshold and highlights differences in activity patterns across boroughs.
 \end{description}
 
-\noindent
-The overall workflow connecting these five stages is summarised in Figure~\ref{fig:workflow}.
 
-\begin{figure}[t]
+\begin{figure}[H]
 \centering
 \includegraphics[width=0.7\textwidth]{figures/fig3_1_workflow}
 \caption{Overall project workflow diagram.}
@@ -422,6 +429,7 @@ The overall workflow connecting these five stages is summarised in Figure~\ref{f
 \noindent
 A consistent validation principle was applied across all four modelling strands: rather than using random train--test splits, a time-based validation framework was used. Models were trained using the first seven years of data and tested on the final 2022--23 survey wave. This approach closely reflects the real-world forecasting problem by ensuring that predictions are generated using only historical information, thereby preventing information leakage and providing a more realistic assessment of model generalisation.
 
+\FloatBarrier
 \section{Dataset Description}
 
 \noindent
@@ -429,93 +437,107 @@ The analysis uses data from Sport England's Active Lives Adult Survey, a nationa
 
 Eight consecutive survey waves, spanning 2015--16 to 2022--23, were used. After filtering the national dataset to Greater London and excluding the City of London, the final dataset comprised 135,497 respondents across 32 London boroughs. Although each raw survey contained approximately 10,700 variables, only variables relevant to the four analytical pillars were retained. As additional question blocks were introduced in later survey waves, the number of columns increased from 292 in the first wave to 601 in the final wave. Table~\ref{tab:dataset-summary} summarises the key properties of the dataset.
 
-\begin{table}[t]
+\begin{table}[!htb]
 \centering
-\caption{Dataset summary.}
+
 \label{tab:dataset-summary}
-\begin{tabular}{|l|l|}
-\hline
+
+\begin{tabular}{ll}
+\toprule
 \textbf{Property} & \textbf{Value} \\
-\hline
-Data source              & Sport England Active Lives Adult Survey (UKDS Ref. 9288) \\
-Survey period             & 2015--16 to 2022--23 \\
-Survey waves              & 8 \\
-Study area                & 32 London boroughs \\
-Total respondents         & 135,497 \\
-Raw variables (per wave)  & $\sim$10,700 \\
-Merged dataset variables  & 610 \\
-\hline
+\midrule
+Data source             & Sport England Active Lives Adult Survey (UKDS Ref. 9288) \\
+Survey period           & 2015--16 to 2022--23 \\
+Survey waves            & 8 \\
+Study area              & 32 London boroughs \\
+Total respondents       & 135,497 \\
+Raw variables (per wave)& $\sim$10,700 \\
+Merged dataset variables& 610 \\
+\bottomrule
 \end{tabular}
+\caption{Dataset summary}
 \end{table}
+
 
 \section{Data Preprocessing}
 
 \noindent
-Before model development, a single consistent analytical dataset was required. The Active Lives Survey evolved over time, with different geographical coding, variable availability, naming conventions and survey structure. During preprocessing, the focus was on harmonising inconsistencies while preserving the integrity of the original survey data. The overall preprocessing workflow is illustrated in Figure~\ref{fig:preprocessing}.
+Before model development, a single consistent analytical dataset was required. The Active Lives Survey evolved over time, with different geographical coding, variable availability, naming conventions and survey structure. During preprocessing the focus was on harmonising inconsistencies while preserving the integrity of the original survey data. The overall preprocessing workflow is illustrated in Figure~\ref{fig:preprocessing}.
 
-\begin{figure}[t]
+\begin{figure}[H]
 \centering
-\includegraphics[width=0.6\textwidth]{figures/fig3_2_preprocessing}
+\includegraphics[width=0.85\textwidth]{figures/fig3_2_preprocessing}
+\captionsetup{justification=centering}
 \caption{Data preprocessing workflow showing dataset harmonisation, data quality checks, feature engineering, and creation of the final modelling datasets.}
 \label{fig:preprocessing}
 \end{figure}
 
+\FloatBarrier
 \subsection{Data Harmonisation}
 
 \noindent
 The first stage was harmonising the eight survey waves into a unified dataset. Borough identities were standardised using the permanent \textbf{ONS Government Statistical Service (GSS)} codes to ensure that each London borough remained consistently identified across all survey years. Variable names were also standardised where naming conventions had changed between survey waves, to merge equivalent variables into a common schema. These steps ensured that the final merged dataset contained consistent geographical and variable identifiers across the entire study period.
 
+\FloatBarrier
 \subsection{Missing Data and Data Quality}
 
 \noindent
-Data quality checks were performed to identify missing values, invalid entries and inconsistencies across survey waves. During import, it was essential to convert the SPSS sentinel values representing non-response into missing values, to prevent invalid numeric codes from influencing the prediction. The remaining missing values arose primarily from survey routing or from questions introduced in later survey waves, rather than from data corruption.
+Data quality checks were performed to identify missing values, invalid entries and inconsistencies across survey waves. During import it was essential to convert the SPSS sentinel values representing non-response into missing values, to prevent invalid numeric codes from influencing the prediction. The remaining missing values arose primarily from survey routing or from questions introduced in later survey waves, rather than from data corruption.
 
 Rather than imputing missing values, the original survey structure was preserved wherever possible. Some variables, such as health, were unavailable in earlier survey years and remained missing for those years. Optional demographic non-response categories were retained as explicit categories to avoid unnecessary information loss. Minor inconsistencies in categorical labels across survey years were standardised to ensure a consistent coding framework throughout the merged dataset.
 
+\FloatBarrier
 \subsection{Feature Engineering}
 
 \noindent
 Feature engineering transformed the harmonised dataset into a model-ready format. The primary target variable, \texttt{Activity\_Level}, was derived from the variable \texttt{MEMS7\_ALL} (number of minutes of moderate-intensity activity per week): Inactive (0--29 minutes/week), Fairly Active (30--149 minutes/week), and Active (150 or more minutes/week). The resulting target variable was stored as an ordered categorical variable to preserve its ordinal structure for modelling. The resulting distribution of the target variable is shown in Table~\ref{tab:activity-level}.
 
-\begin{table}[t]
+\begin{table}[!htb]
 \centering
-\caption{Distribution of the derived \texttt{Activity\_Level} target variable.}
 \label{tab:activity-level}
-\begin{tabular}{|l|l|r|r|}
-\hline
+
+\begin{tabular}{llrr}
+\toprule
 \textbf{Activity Level} & \textbf{\texttt{MEMS7\_ALL} Threshold} & \textbf{Count} & \textbf{\% of Dataset} \\
-\hline
-Active         & 150+ minutes/week      & 90,124 & 66.5\% \\
-Fairly Active  & 30--149 minutes/week   & 15,033 & 11.1\% \\
-Inactive       & 0--29 minutes/week     & 30,340 & 22.4\% \\
-\hline
+\midrule
+Active        & 150+ minutes/week     & 90,124 & 66.5\% \\
+Fairly Active & 30--149 minutes/week  & 15,033 & 11.1\% \\
+Inactive      & 0--29 minutes/week    & 30,340 & 22.4\% \\
+\bottomrule
 \end{tabular}
+
+\caption{Distribution of the derived \texttt{Activity\_Level} target variable.}
 \end{table}
 
 \noindent
 To improve interpretability and maintain adequate sample sizes, the age variable, originally recorded using nine age categories, was redefined into four broad age groups (16--24, 25--44, 45--64 and 65+), as detailed in Table~\ref{tab:age-groups}. All categorical predictors were converted to categorical data types to improve computational efficiency and ensure compatibility with the machine learning algorithms.
 
-\begin{table}[t]
+\begin{table}[!htb]
 \centering
-\caption{Construction of the four broad age groups from the original nine-band age variable.}
+
 \label{tab:age-groups}
-\begin{tabular}{|l|l|r|}
-\hline
+
+\begin{tabular}{llr}
+\toprule
 \textbf{Age\_Group} & \textbf{Age9 Bands Included} & \textbf{Count} \\
-\hline
-16--24 & 16--24                 & 11,110 \\
-25--44 & 25--34, 35--44         & 53,216 \\
-45--64 & 45--54, 55--64         & 43,555 \\
-65+    & 65--74, 75--84, 85+    & 26,289 \\
-\hline
+\midrule
+16--24 & 16--24              & 11,110 \\
+25--44 & 25--34, 35--44      & 53,216 \\
+45--64 & 45--54, 55--64      & 43,555 \\
+65+    & 65--74, 75--84, 85+ & 26,289 \\
+\bottomrule
 \end{tabular}
+
+\caption{Construction of the four broad age groups from the original nine-band age variable.}
 \end{table}
 
+\FloatBarrier
 \subsection{Final Modelling Dataset}
 
 \noindent
 The final master dataset contained 135,497 respondents and 610 variables. To improve modelling efficiency, two purpose-specific datasets were created. For the CatBoost, clustering and Bayesian models, a compact 20-variable dataset (containing demographic characteristics, activity measures and the derived target variable) was used. For activity-type information, a broader dataset with approximately 75 variables was used in the LightGBM model. Additionally, borough-level aggregated datasets were created to support trend analysis and borough-level forecasting, although these were not used for model training.
 
+\FloatBarrier
 \section{Exploratory Data Analysis}
 
 \noindent
@@ -523,155 +545,810 @@ Exploratory Data Analysis (EDA) was conducted after preprocessing to understand 
 
 The weighted exploratory analysis had four key objectives: respondents' demographic characteristics, trends in physical activity by year, geographical variation across boroughs, and volunteering behaviour. These analyses provided a better understanding of the study population, helped identify important patterns in the data, and informed the feature selection and modelling approaches used in the later stages of the project.
 
+\FloatBarrier
 \subsection{Population Characteristics}
 
 \noindent
 The demographic characteristics of the study population were explored using population-weighted summaries of age, gender, ethnicity, education and disability status, as shown in Figure~\ref{fig:demographics}. Examining these distributions helped establish an overall profile of the London population represented in the survey, and showed clear differences across demographic groups, supporting their use as important predictor variables in the subsequent modelling.
 
-\begin{figure}[t]
+
+\begin{figure}[!htb]
 \centering
-\begin{minipage}{0.48\textwidth}
-\centering
-\includegraphics[width=\textwidth]{figures/fig3_3a_demographics}
-\end{minipage}\hfill
-\begin{minipage}{0.48\textwidth}
-\centering
-\includegraphics[width=\textwidth]{figures/fig3_3b_demographics}
+% ---------- Row 1 ----------
+\begin{minipage}[t]{0.43\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{figures/fig3_3a_demographics}
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.43\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{figures/fig3_3b_demographics}
 \end{minipage}
 
-\vspace{0.5cm}
+\vspace{0.2cm}
 
-\begin{minipage}{0.32\textwidth}
-\centering
-\includegraphics[width=\textwidth]{figures/fig3_3c_demographics}
-\end{minipage}\hfill
-\begin{minipage}{0.32\textwidth}
-\centering
-\includegraphics[width=\textwidth]{figures/fig3_3d_demographics}
-\end{minipage}\hfill
-\begin{minipage}{0.32\textwidth}
-\centering
-\includegraphics[width=\textwidth]{figures/fig3_3e_demographics}
+% ---------- Row 2 ----------
+\begin{minipage}[t]{0.43\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{figures/fig3_3c_demographics}
 \end{minipage}
+\hfill
+\begin{minipage}[t]{0.43\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{figures/fig3_3d_demographics}
+\end{minipage}
+
+\vspace{0.2cm}
+
+% ---------- Row 3 ----------
+\begin{minipage}[t]{0.43\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{figures/fig3_3e_demographics}
+\end{minipage}
+
 \caption{Population-weighted demographic characteristics of respondents.}
 \label{fig:demographics}
+
 \end{figure}
 
+
+
+
+
+
+\FloatBarrier
 \subsection{Physical Activity Trends}
 
 \noindent
-Physical activity levels were analysed across all eight survey waves using the derived \texttt{Activity\_Level} variable, as shown in Figure~\ref{fig:activity-trends}. Throughout the study period, overall participation was stable; however, there was a temporary spike in inactivity during the COVID-19 pandemic, followed by a gradual recovery in later years. The proportion of respondents classified as Fairly Active also showed a gradual decline in later years, suggesting changes in participation behaviour over time.
+Physical activity levels were analysed across all eight survey waves using the derived \texttt{Activity\_Level} variable, as shown in Figure~\ref{fig:activity-trends}. Throughout the study period overall participation was stable; however, there was a temporary spike in inactivity during the COVID-19 pandemic, followed by a gradual recovery in later years. The proportion of respondents classified as Fairly Active also showed a gradual decline in later years, suggesting changes in participation behaviour over time.
 
 Spatial analysis, shown in Figure~\ref{fig:borough-variation}, further demonstrated that activity levels varied across London's boroughs, indicating that geographical location may influence physical activity participation. These observations supported the inclusion of borough-level effects within the forecasting and Bayesian modelling frameworks.
 
-\begin{figure}[t]
+\begin{figure}[!htb]
 \centering
 \includegraphics[width=0.75\textwidth]{figures/fig3_4_activity_trends}
 \caption{Population-weighted distribution of activity levels across survey years.}
 \label{fig:activity-trends}
 \end{figure}
 
-\begin{figure}[t]
+\begin{figure}[!htb]
 \centering
 \includegraphics[width=\textwidth]{figures/fig3_5_borough_variation}
 \caption{Geographical variation in population-weighted activity levels across London's boroughs.}
 \label{fig:borough-variation}
 \end{figure}
 
+\FloatBarrier
 \subsection{Volunteering Trends}
 
 \noindent
 Volunteering was analysed to understand how participation changed over time, as shown in Figure~\ref{fig:volunteering}. The results showed that volunteering levels fell during the COVID-19 period before gradually recovering in the following survey years. A noticeable change between the 2017--18 and 2018--19 survey waves was also observed, which aligns with revisions made to the Active Lives Survey rather than reflecting a genuine change in volunteering behaviour. Identifying these patterns helped provide context for the forecasting analysis presented in later chapters.
 
-\begin{figure}[t]
+\begin{figure}[!htb]
 \centering
 \includegraphics[width=0.75\textwidth]{figures/fig3_6_volunteering}
 \caption{Population-weighted volunteering participation across survey years.}
 \label{fig:volunteering}
 \end{figure}
 
+\FloatBarrier
 \section{Machine Learning Framework}
 
 \noindent
 To address the objectives of the London Sport project, four different machine learning approaches were developed and evaluated independently. Rather than relying on a single model, multiple techniques were explored because each model offers different strengths in analysing physical activity data. Some models are better suited to prediction, others provide greater interpretability or uncertainty estimation, while some are useful for identifying hidden patterns within the population. Using a range of approaches also allowed their performance to be compared under the same data and validation framework before selecting the most suitable models for forecasting and interpretation.
 
-The four modelling approaches included \textbf{CatBoost with SHAP}, \textbf{LightGBM}, \textbf{K-Modes clustering}, and a \textbf{Bayesian Hierarchical Ordinal Logistic Regression} model. CatBoost was selected for its strong performance on structured datasets containing many categorical variables, while SHAP was used to explain the contribution of each predictor to the model's decisions. LightGBM was chosen as an alternative gradient-boosting approach because of its computational efficiency and ability to handle high-dimensional tabular data. K-Modes clustering was applied to identify groups of respondents with similar demographic and participation characteristics, giving additional insight into population segmentation. Finally, the Bayesian hierarchical model was developed to account for the ordered nature of the activity outcome while capturing variation between London boroughs through random effects and providing probabilistic estimates of uncertainty.
+The four modelling approaches included CatBoost with SHAP, LightGBM, K-Modes clustering, and a Bayesian Hierarchical Ordinal Logistic Regression model. CatBoost was selected for its strong performance on structured datasets containing many categorical variables, while SHAP was used to explain the contribution of each predictor to the model's decisions. LightGBM was chosen as an alternative gradient-boosting approach because of its computational efficiency and ability to handle high-dimensional tabular data. K-Modes clustering was applied to identify groups of respondents with similar demographic and participation characteristics, giving additional insight into population segmentation. Finally, the Bayesian hierarchical model was developed to account for the ordered nature of the activity outcome while capturing variation between London boroughs through random effects and providing probabilistic estimates of uncertainty.
 
-To ensure a fair comparison, all four models were developed using the same modelling dataset and evaluated under the same validation strategy. Survey data from \textbf{2015--16 to 2021--22} were used for model development, while the final \textbf{2022--23} survey wave was used as an unseen test dataset.
+To ensure a fair comparison, all four models were developed using the same modelling dataset and evaluated under the same validation strategy. Survey data from 2015--16 to 2021--22 were used for model development, while the final 2022--23 survey wave was used as an unseen test dataset.
+
 
 % -----------------------------------------------------------------------------
-
-\chapter{Critical Evaluation}
+\chapter{Results and Critical Evaluation}
 \label{chap:evaluation}
 
-{\bf A topic-specific chapter, roughly 30\% of the total page-count} 
-\vspace{1cm} 
+\FloatBarrier
+\section{Experimental Setup}
 
 \noindent
-This chapter is intended to evaluate what you did.  The content is highly 
-topic-specific, but for many projects will have flavours of the following:
+All the models were evaluated on the same pooled dataset (135,497 respondents, 8 waves, 32 boroughs), but under two slightly different temporal validation strategies designed to evaluate performance on an unseen future survey wave. CatBoost and LightGBM were trained on waves 1--6, tuned on wave 7, and tested on the untouched wave 8 (2022--23). The Bayesian model and the clustering-based classifiers were trained on waves 1--7 as a single block (no separate tuning wave) and tested on wave 8. All splits are temporal rather than random; this approach mirrors the forecasting setting and avoids information leakage.
 
-\begin{enumerate}
-\item functional  testing, including analysis and explanation of failure 
-      cases,
-\item behavioural testing, often including analysis of any results that 
-      draw some form of conclusion wrt. the aims and objectives,
-      and
-\item evaluation of options and decisions within the project, and/or a
-      comparison with alternatives.
-\end{enumerate}
+Not every model was evaluated on identical metrics or an identical target. CatBoost and clustering predict a \textbf{binary} outcome (meets the 150-minute guideline or not); LightGBM and the Bayesian model predict the \textbf{3-band ordinal} \texttt{Activity\_Level}. The evaluation for supervised predictive models was carried out using \textbf{AUC, Log Loss and Accuracy}, while \textbf{runtime} was used to assess computational efficiency. The clustering and Bayesian approaches were assessed using measures appropriate to their respective modelling objectives, together with runtime. The results were considered in terms of predictive performance, computational requirements, interpretability and suitability for the project's forecasting objective.
+
+\FloatBarrier
+\section{Model Comparison -- Performance and Critical Analysis}
 
 \noindent
-This chapter often acts to differentiate project quality: even if the work
-completed is of a high technical quality, critical yet objective evaluation 
-and comparison of the outcomes is crucial.  In essence, the reader wants to
-learn something, so the worst examples amount to simple statements of fact 
-(e.g., ``graph X shows the result is Y''); the best examples are analytical 
-and exploratory (e.g., ``graph X shows the result is Y, which means Z; this 
-contradicts [1], which may be because I use a different assumption'').  As 
-such, both positive {\em and}\/ negative outcomes are valid {\em if} presented 
-in a suitable manner.
+The four approaches produced different strengths and limitations, reflecting their different modelling objectives. Table~\ref{tab:model-comparison} summarises the metrics available for each approach.
+
+\begin{table}[!htb]
+\centering
+\begin{threeparttable}
+\renewcommand{\arraystretch}{1.2}
+\small
+\setlength{\tabcolsep}{5pt}
+
+\begin{tabularx}{\textwidth}{
+    @{}
+    >{\raggedright\arraybackslash}X
+    >{\raggedright\arraybackslash}X
+    >{\centering\arraybackslash}p{0.07\textwidth}
+    >{\centering\arraybackslash}p{0.09\textwidth}
+    >{\centering\arraybackslash}p{0.09\textwidth}
+    >{\centering\arraybackslash}p{0.11\textwidth}
+    >{\centering\arraybackslash}p{0.12\textwidth}
+    @{}
+}
+\toprule
+\textbf{Model} &
+\textbf{Target} &
+\textbf{AUC} &
+\textbf{Log Loss} &
+\textbf{Accuracy} &
+\textbf{Macro F1} &
+\textbf{Runtime} \\
+\midrule
+
+LightGBM
+& 3-band ordinal
+& 0.707
+& --
+& 67.4\%$^{*}$
+& --
+& 15 min 50 sec \\
+
+CatBoost
+& Binary
+& 0.708
+& 0.588
+& 68.9\%
+& --
+& 2 min 30. sec \\
+
+Random Forest (clustering)
+& Binary
+& --
+& --
+& 54.0\%
+& 0.428
+& 14 sec \\
+
+Gradient Boosting (clustering)
+& Binary
+& --
+& --
+& 67.9\%
+& 0.363
+& 2 min 16 sec \\
+
+Bayesian Hierarchical Ordinal$^{\dagger}$
+& 3-band ordinal
+& 0.680
+& 0.820
+& 65.0\%
+& 0.570
+& $\sim$96 min \\
+
+\bottomrule
+\end{tabularx}
+
+\caption{Comparison of predictive performance across the modelling approaches.}
+\label{tab:model-comparison}
+\vspace{0.15cm}
+\begin{tablenotes}[flushleft]
+\footnotesize
+\item \textit{Notes:} $^{*}$ Weighted accuracy. 
+$^{\dagger}$ Bayesian results are based on a preliminary run using 200 posterior draws, 200 tuning iterations, and 2 chains; therefore, its metrics and runtime are not directly comparable with the other models and are included for indicative comparison only.
+\end{tablenotes}
+
+\end{threeparttable}
+\end{table}
+
+
+\FloatBarrier
+\subsection{LightGBM}
+
+\noindent
+LightGBM achieved an AUC of 0.707, weighted accuracy of 67.4\% and borough correlation of 0.90. It was marginally ahead of a benchmarked ordinal logistic regression (AUC 0.704, accuracy 67.1\%, correlation 0.90) on every metric tested, as shown in Figure~\ref{fig:lightgbm-perf}. The model provided a useful balance between predictive performance and computational efficiency, completing the full modelling process in approximately \textbf{15 minutes and 50 seconds}. It was also able to model non-linear relationships within the structured survey data and could be incorporated directly into the borough-level forecasting framework. LightGBM was therefore well suited to the forecasting stage, where both predictive performance and the ability to incorporate a broader set of activity-related features were important.
+
+\begin{figure}[!htb]
+\centering
+\includegraphics[width=\textwidth]{figures/fig4_1_lightgbm_perf}
+\caption{LightGBM predictive performance relative to the benchmarked ordinal logistic regression.}
+\label{fig:lightgbm-perf}
+\end{figure}
+
+\noindent
+The model showed limited evidence of overfitting. Performance remained stable on unseen data, while the leave-one-borough-out check produced a borough-level correlation of 0.898, very close to 0.900 when boroughs were included. The borough-level correlation and calibration reliability plot, shown in Figure~\ref{fig:lightgbm-reliability}, also indicate that predicted probabilities broadly followed the observed probabilities, supporting the stability of the model's predictions.
+
+\begin{figure}[!htb]
+\centering
+\begin{minipage}{0.48\textwidth}
+\centering
+\includegraphics[width=\textwidth]{figures/fig4_2a_lightgbm_correlation}
+\end{minipage}\hfill
+\begin{minipage}{0.48\textwidth}
+\centering
+\includegraphics[width=\textwidth]{figures/fig4_2b_lightgbm_reliability}
+\end{minipage}
+\caption{LightGBM borough-level correlation (left) and calibration reliability plot (right).}
+\label{fig:lightgbm-reliability}
+\end{figure}
+
+\noindent
+Feature importance indicates that education and socio-economic status were the strongest contributors to the model's predictions, followed by age. Ethnicity, disability and BMI also contributed meaningfully, while gender had a smaller influence. This suggests that socioeconomic and demographic characteristics played a greater role in predicting activity level than gender alone.
+
+\FloatBarrier
+\subsection{CatBoost + SHAP}
+
+\noindent
+CatBoost achieved an \textbf{AUC of 0.708}, \textbf{Log Loss of 0.588}, and \textbf{68.9\% accuracy}. The main value of the model was its interpretability through SHAP. \textbf{Ethnicity, education and BMI} had the highest average influence, followed by age, social grade, disability and gender. Age showed the widest range of individual effects, while gender had the lowest overall influence. An interesting finding was that \textbf{missing BMI values were strongly associated with inactivity}, suggesting that the missingness itself contained useful information; this represents a model-based association rather than a causal relationship.
+
+CatBoost provided strong individual-level prediction and useful insights into the factors associated with activity participation. However, its \textbf{AUC of 0.708} also indicates that demographic characteristics alone have limited ability to predict individual behaviour. The model also showed a small calibration shift on the held-out wave, with predicted probabilities approximately \textbf{1 percentage point below the observed values}, and tree-based models cannot naturally extrapolate to future periods. Therefore, CatBoost was retained primarily as an \textbf{interpretability and predictive benchmark}, with SHAP providing useful insights into the demographic drivers, rather than being used as the final forecasting model.
+
+\FloatBarrier
+\subsection{Clustering (K-Modes + Classifiers)}
+
+\noindent
+The K-Modes clustering approach was used to identify population segments based on categorical demographic and activity characteristics. The resulting clusters were subsequently evaluated using supervised classifiers. Gradient Boosting had the highest accuracy (67.9\% test, 68.1\% CV) but the weakest Macro F1 (0.363); Random Forest gave the best balance of accuracy and Macro F1 (54.0\% / 0.428) and was selected within this strand. Its advantages were an appropriate categorical clustering method, interpretable population segments, and an empirical multi-model, multi-metric comparison. However, it uses a binary target and excludes survey year entirely, so it cannot represent temporal change or generate forecasts; this is why the whole strand was retained as exploratory rather than adopted as the final methodology.
+
+\FloatBarrier
+\subsection{Bayesian Hierarchical Ordinal Model}
+
+\noindent
+The Bayesian hierarchical ordinal model gave a useful alternative by treating Activity Level as an ordered outcome and allowing for differences between boroughs. It achieved an AUC of 0.68, accuracy of 65\%, Macro F1 of 0.57 and Log Loss of 0.82. While these results were slightly below the supervised models, the Bayesian model provided useful information about borough-level variation and uncertainty. The borough random-effect standard deviation was approximately 0.123, suggesting modest differences between boroughs after accounting for the other predictors. However, the model took around 96 minutes to run, with some R-hat values around 1.03 and maximum tree-depth warnings. Overall, it was useful for interpretation, but less practical for repeated forecasting.
+
+\FloatBarrier
+\subsection{Final Model Selection: LightGBM}
+
+\noindent
+LightGBM was chosen as the main forecasting model because it gave the best balance between performance, speed and practical use. It achieved an AUC of 0.707 and accuracy of 67.4\%, while taking only around 16 minutes to train. It can also capture non-linear relationships and interactions between factors such as demographics, year and borough without requiring them to be manually specified. This makes it well suited to the complex patterns in physical activity and to generating forecasts across multiple boroughs. CatBoost gave similar predictive results and was useful for SHAP-based interpretation, while the Bayesian model provided useful uncertainty and borough-level insights but was much slower. Overall, LightGBM was therefore selected for the final forecasting stage.
+\newpage
+\FloatBarrier
+\section{Physical Activity and Volunteering Trends Over the Next Ten Years}
+
+\noindent
+This section reports the forecast for all four analytical pillars: overall participation forecasts, demographic-specific insights, indoor versus outdoor activity, and volunteering in sport.
+
+\subsubsection*{A note on forecasting versus description}
+
+\noindent
+Forecasting was applied only where the data provided sufficient evidence for reliable projection: the question had to be measured consistently across survey years, have adequate sample coverage, and show sufficient predictive structure from demographic variables. Overall activity, activity types, club membership and key demographic groups met all three criteria and were therefore forecast, with borough-level projections and quantified uncertainty.
+
+Where these conditions were not met, results are presented descriptively rather than as forecasts, so that no figure implies more confidence than the data can support. Free time was asked only in the final wave, so there is no trend to project and it can only be described as a current snapshot. Volunteering was measured inconsistently, as its question base changed twice during the series, and demographics explain only around 15\% of the variation between boroughs -- too weak a signal to drive a projection, so it is reported at London and demographic level rather than forecast. Indoor and outdoor activity was asked of just $\sim$30\% of respondents, a rotating subsample that leaves the estimates with considerably greater uncertainty, so it is described with only one cautious London-level projection. Health was unavailable in the early survey years, leaving only five years of data, two of them affected by COVID and excluded as atypical; the remaining three clean years are not sufficient to establish a reliable trend, so despite being the strongest single correlate of activity, it too is reported descriptively.
+
+This distinction ensures that forecasts are supported by the available evidence rather than presenting uncertain estimates as precise future outcomes.
+
+\FloatBarrier
+\subsection{P1 -- Overall Participation Forecasts}
+
+\paragraph{Physical activity across London as a whole.}
+
+\noindent
+The model projects broad stability in London's overall activity levels in the near term. By 2025--26, around 64.9\% of adults are projected to be Active, while 26.0\% are Inactive and 9.1\% are Fairly Active, as shown in Figure~\ref{fig:P1.1}. Although the Active share changes little, the Fairly Active group has declined steadily over the observed period, suggesting a gradual shift away from the middle activity band.
+
+\begin{figure}[!htb]
+\centering
+\includegraphics[width=0.9\textwidth]{figures/figP1_1_london_activity_bands}
+\caption{London-wide activity bands, observed 2015--16 to 2022--23 and projected to 2025--26.}
+\label{fig:P1.1}
+\end{figure}
+
+\begin{table}[!htb]
+\centering
+
+\label{tab:P1.2}
+
+\renewcommand{\arraystretch}{1.2}
+
+\begin{tabular}{@{}l c l@{}}
+\toprule
+\textbf{Component} &
+\textbf{Effect by 2025--26} &
+\textbf{Interpretation} \\
+\midrule
+
+Composition
+& $-0.37$ points
+& London's ageing population pulls activity down \\
+
+Behaviour
+& $+0.69$ points
+& People of a given type are becoming more active \\
+
+Net
+& $+0.32$ points
+& Apparent stability produced by two real trends cancelling \\
+
+\bottomrule
+\end{tabular}
+\caption{Decomposition of the near-term London-wide forecast into composition and behaviour effects.}
+\end{table}
+\newpage
+\noindent
+This decomposition, given in Table 4.2, is the central analytical result behind the `stable' headline. A conventional forecast would report the number as roughly flat and stop there. Decomposing it shows that the stability is a coincidence of two genuine trends cancelling, not a settled equilibrium. If the behavioural improvement stalls, the demographic headwind takes over -- the stability is more fragile than the flat line suggests.
+
+For the longer-term outlook, three scenarios are presented rather than a single point forecast, as shown in Figure~\ref{fig:P1.2}. By 2031--32, the Active share ranges from approximately 61.0\% under a trend-reversal scenario to 65.4\% if recent gains continue, with a population-change-only scenario at around 63.1\%. This range highlights that the long-term direction of physical activity is sensitive to the assumptions made about future behaviour.
+
+\begin{figure}[!htb]
+\centering
+\includegraphics[width=0.75\textwidth]{figures/figP1_2_tenyear_scenario}
+\caption{Ten-year scenario range for London-wide activity, 2022--2032.}
+\label{fig:P1.2}
+\end{figure}
+
+\paragraph{Likelihood of participating in specific activities.}
+
+\noindent
+Ten-year scenario and three-year scenario ranges were produced for seven individual activities and three club-membership measures. Among these, the top two activities are walking (Figure~\ref{fig:P1.4}) and active travel (Figure~\ref{fig:P1.3}); club membership trends are shown in Figure~\ref{fig:P1.5}.
+
+\begin{figure}[!htb]
+\centering
+\begin{minipage}{0.48\textwidth}
+\centering
+\includegraphics[width=\textwidth]{figures/figP1_3a_active_travel}
+\end{minipage}\hfill
+\begin{minipage}{0.48\textwidth}
+\centering
+\includegraphics[width=\textwidth]{figures/figP1_3b_active_travel}
+\end{minipage}
+\caption{Active travel: ten-year scenarios (widest scenario spread of any activity measured).}
+\label{fig:P1.3}
+\end{figure}
+
+\begin{figure}[!htb]
+\centering
+\begin{minipage}{0.48\textwidth}
+\centering
+\includegraphics[width=\textwidth]{figures/figP1_4a_walking}
+\end{minipage}\hfill
+\begin{minipage}{0.48\textwidth}
+\centering
+\includegraphics[width=\textwidth]{figures/figP1_4b_walking}
+\end{minipage}
+\caption{Walking: ten-year scenarios (largest-base activity measured).}
+\label{fig:P1.4}
+\end{figure}
+
+\begin{figure}[!htb]
+\centering
+\begin{minipage}{0.48\textwidth}
+\centering
+\includegraphics[width=\textwidth]{figures/figP1_5a_club_membership}
+\end{minipage}\hfill
+\begin{minipage}{0.48\textwidth}
+\centering
+\includegraphics[width=\textwidth]{figures/figP1_5b_club_membership}
+\end{minipage}
+\caption{Club membership (any sport): ten-year scenarios.}
+\label{fig:P1.5}
+\end{figure}
+
+\begin{table}[!htb]
+\centering
+\renewcommand{\arraystretch}{1.12}
+
+\begin{tabularx}{\textwidth}{
+    @{}
+    >{\raggedright\arraybackslash}X
+    >{\centering\arraybackslash}X
+    >{\centering\arraybackslash}X
+    >{\centering\arraybackslash}X
+    >{\centering\arraybackslash}X
+    @{}
+}
+\toprule
+\textbf{Activity / Club Type} &
+\textbf{Today} &
+\textbf{If Gains Continue} &
+\textbf{Population Change Only} &
+\textbf{If Gains Reverse} \\
+\midrule
+
+Walking
+& 75.7\% & 71.4\% & 74.6\% & 71.5\% \\
+
+Active travel
+& 60.2\% & 49.1\% & 58.6\% & 45.1\% \\
+
+Fitness activities
+& 35.4\% & 31.8\% & 34.5\% & 29.5\% \\
+
+Cycling
+& 19.7\% & 20.1\% & 18.9\% & 17.2\% \\
+
+Team sports
+& 8.2\% & 6.5\% & 7.7\% & 4.9\% \\
+
+Dance
+& 8.9\% & 5.2\% & 8.7\% & 7.0\% \\
+
+Racket sports
+& 6.1\% & 5.1\% & 6.0\% & 4.0\% \\
+
+Club membership (any sport)$^{*}$
+& 16.3\% & 20.1\% & 15.6\% & 16.5\% \\
+
+Fitness club / gym
+& 10.0\% & 9.4\% & 9.5\% & 9.5\% \\
+
+Team-sport club
+& 4.7\% & 7.1\% & 4.3\% & 4.7\% \\
+
+\bottomrule
+\end{tabularx}
+
+\vspace{-0.15cm}
+
+\caption{Ten-year scenario range by activity/club type (\% of London adults).}
+\label{tab:P1.1}
+
+\vspace{0.15cm}
+
+\begin{tablenotes}[flushleft]
+\footnotesize
+\textit{Note:} * Club membership figures represent separate, potentially overlapping breakdowns rather than components of a single total. ``Fitness club/gym'' and ``team-sport club'' do not sum to ``club membership (any sport)'', since a person could belong to both, or to a club type not itemised here.
+\end{tablenotes}
+
+
+\end{table}
+
+\noindent
+Continuing recent trends, as summarised in Table~\ref{tab:P1.1}, suggests a decline in most individual activities, except cycling, while all three club-membership measures show potential growth. However, this recovery is uneven: team-sport club membership shows the strongest increase (4.7\% $\rightarrow$ 7.1\%), whereas fitness/gym membership remains broadly flat or declines (10.0\% $\rightarrow$ 9.4\%). The wide scenario ranges for team sports and active travel reflect their strong disruption during COVID, so these long-term projections should be interpreted as directional rather than precise forecasts.
+
+
+\paragraph{Forecasts of activity levels for each London borough.}
+
+\noindent
+Applying the propensity model to each borough's projected demographic composition produces a 2025 borough-level forecast ranging from 51.3\% in Barking and Dagenham to 75.4\% in Wandsworth.
+
+\begin{figure}[!htb]
+\centering
+\begin{minipage}{0.48\textwidth}
+\centering
+\includegraphics[width=\textwidth]{figures/figP1_6a_boroughs_active}
+\end{minipage}\hfill
+\begin{minipage}{0.48\textwidth}
+\centering
+\includegraphics[width=\textwidth]{figures/figP1_6b_boroughs_active}
+\end{minipage}
+\caption{Ten most active boroughs and five least active boroughs, projected share of adults meeting the guideline, 2025.}
+\label{fig:P1.6}
+\end{figure}
+
+
+\noindent
+The roughly 24-percentage-point gap between the most and least active boroughs is expected to persist throughout the projection period. The non-overlapping confidence intervals suggest that this difference is unlikely to be due to sampling variation alone. In addition, all 32 boroughs show a negative composition effect, ranging from close to zero to around $-0.9$ percentage points, indicating that projected demographic changes are expected to place some downward pressure on activity levels across London, although the size of this effect varies between boroughs.~\ref{fig:P1.6}.
+
+\paragraph{Key factors that may reduce free time and affect participation.}
+
+\noindent
+Free-time constraint questions were asked once, in the 2022--23 wave only, of approximately a third of respondents. This section is therefore necessarily a cross-sectional snapshot rather than a ten-year forecast, as shown in Figures~\ref{fig:P1.7} and~\ref{fig:P1.9}.
+
+\begin{figure}[!htb]
+\centering
+\begin{minipage}{0.48\textwidth}
+\centering
+\includegraphics[width=\textwidth]{figures/figP1_7a_freetime_age}
+\end{minipage}\hfill
+\begin{minipage}{0.48\textwidth}
+\centering
+\includegraphics[width=\textwidth]{figures/figP1_7b_freetime_gender}
+\end{minipage}
+\caption{Reasons free time for activity is limited, by age group and gender (London adults, 2022--23).}
+\label{fig:P1.7}
+\end{figure}
+
+\begin{figure}[!htb]
+\centering
+\begin{minipage}{0.48\textwidth}
+\centering
+\includegraphics[width=\textwidth]{figures/figP1_9a_activity_freetime_age}
+\end{minipage}\hfill
+\begin{minipage}{0.48\textwidth}
+\centering
+\includegraphics[width=\textwidth]{figures/figP1_9b_activity_freetime_gender}
+\end{minipage}
+\caption{Activity rate by whether free time is constrained, by age group and gender.}
+\label{fig:P1.9}
+\end{figure}
+
+\noindent
+The results show that work, study and childcare are the main reported constraints on free time, particularly among working-age adults, while caring responsibilities and health or disability are less frequently reported. However, reporting any free-time constraint was not associated with lower overall activity; constrained respondents were slightly more likely to be Active. This should be interpreted as a descriptive association rather than a causal relationship, as different constraints may have opposing effects. In particular, long working hours show a clearer negative association with physical activity, while activities such as childcare or active travel may themselves involve physical activity.
+
+\FloatBarrier
+\subsection{P2 -- Demographic-Specific Insights}
+
+\paragraph{Forecasted participation levels by demographic group.}
+
+\noindent
+Figure~\ref{fig:P2.1} shows the forecast broken down by demographic group.
+
+\begin{figure}[!htb]
+\centering
+\includegraphics[width=0.8\textwidth]{figures/figP2_1_demographic_forecast}
+\caption{Activity forecast by demographic group; bar = 3-year forecast range, dot = today's rate.}
+\label{fig:P2.1}
+\end{figure}
+
+\noindent
+The forecast shows clear differences in physical activity across demographic groups, with socio-economic position showing the widest gap: around 73\% activity among the Higher group compared with 50\% in the Lower group (23 percentage points). This is followed by the age gap of around 20 points (70\% among 16--24 vs 50\% among 65+), the disability gap of 19 points, and the ethnicity gap of 13 points. Gender shows the smallest difference, at around 4 points (66\% male vs 62\% female). The 65+ group is particularly important, as it is both the least active group and shows little projected change (around $+1$ percentage point), meaning London's ageing population may create a demographic headwind to overall activity levels.
+
+\paragraph{Types of sport or physical activity each group is most likely to engage in.}
+
+\noindent
+Figure~\ref{fig:P2.2} breaks down activity type by demographic group.
+
+
+
+% ------------------------------------------------------------------
+% ROW 1 -- kept on the current page
+% ------------------------------------------------------------------
+
+\begin{center}
+\begin{minipage}{0.40\textwidth}
+\centering
+\includegraphics[width=\textwidth]{figures/figP2_2b_age}
+\end{minipage}
+\hfill
+\begin{minipage}{0.40\textwidth}
+\centering
+\includegraphics[width=\textwidth]{figures/figP2_2c_gender.png}
+\end{minipage}
+\end{center}
+
+% ------------------------------------------------------------------
+% ROWS 2 AND 3 -- start on the next page
+% ------------------------------------------------------------------
+
+\newpage
+
+\begin{figure}[H]
+\centering
+
+% Row 2
+\begin{minipage}{0.40\textwidth}
+\centering
+\includegraphics[width=\textwidth]{figures/figP2_2d_ethnicity}
+\end{minipage}
+\hfill
+\begin{minipage}{0.40\textwidth}
+\centering
+\includegraphics[width=\textwidth]{figures/figP2_2e_socioeconomic.png}
+\end{minipage}
+
+\vspace{0.35cm}
+
+% Row 3
+\begin{minipage}{0.40\textwidth}
+\centering
+\includegraphics[width=\textwidth]{figures/figP2_2f_disability.png}
+\end{minipage}
+
+\caption{Which activities each group does most; bold marks the top activity for that group.}
+\label{fig:P2.2}
+\end{figure}
+
+\noindent
+Walking is the most common activity across all demographic groups, although participation is lowest among adults with a limiting disability (64\%). The strongest age gradient occurs in team sports, falling sharply from 19\% among 16--24-year-olds to just 1\% among those aged 65+, while active travel, the second most common activity, also declines from 69\% to 42\%. Gender differences vary by activity: men participate more in cycling, team and racket sports, while women lead in fitness and particularly dance (14\% vs 5\%), with walking equal at 77\%. Ethnic differences are also activity-specific, with Black respondents showing the highest participation in both dance (16\%) and team sports (10\%), while Asian respondents have the lowest fitness (26\%) and active travel (54\%) rates.
+
+Socio-economic position shows particularly large differences in facility-dependent activities, with fitness at 40\% in the Higher group versus 20\% in the Lower group and cycling at 25\% versus 11\%. However, team sports are highest among the Student/Other group (14\%), while dance varies relatively little across socio-economic groups. Similarly, adults with a limiting disability have the lowest participation across all seven activities, with particularly large gaps in fitness, racket sports and active travel, but almost no gap in dance. Overall, dance stands out as the exception: unlike most other activities, it shows relatively small socio-economic and disability differences, suggesting that activities requiring greater access to facilities, equipment or organised provision are more strongly associated with demographic inequalities.
+
+\paragraph{Participation within each London borough.}
+
+\noindent
+\textbf{Data note:} the ask was for participation in specific activities within each borough. However, the details for activity-type $\times$ borough were not available at reportable cell sizes. The provided plot in Figure~\ref{fig:P2.3} is therefore broken down by age-group participation within each borough instead. Borough-by-demographic cells are small: a single borough-by-age cell contains around six respondents in a given wave. All eight waves were therefore pooled and thin cells suppressed.
+
+\begin{figure}[!htb]
+\centering
+\begin{minipage}{0.4\textwidth}
+\centering
+\includegraphics[width=\textwidth]{figures/figP2_3b_borough_age_gradient}
+\end{minipage}
+\caption{Age gradient within each borough, all waves pooled.}
+\label{fig:P2.3}
+\end{figure}
+
+\noindent
+The 65+ group is the least active in all 32 boroughs, but the youngest group is not always the most active. In 11 boroughs, the 25--44 group matches or exceeds the 16--24 group, most notably in \textbf{Borough 012 (Hackney)}, where activity rises from 64\% (16--24) to 76\% (25--44). The age gap also varies considerably between boroughs, from 29 points in \textbf{Borough 027 (Richmond upon Thames)} (84\% vs 55\%) to just 11 points in \textbf{Borough 014 (Haringey)} (65\% vs 54\%). \textbf{Borough 032 (Wandsworth)} has the highest 65+ rate (59\%), while \textbf{002 (Barking and Dagenham)} has the lowest (36\%), showing that borough-level differences can reinforce the effect of age.
+
+\paragraph{Likelihood of participation among people with health conditions.}
+
+\noindent
+Self-rated health is available from 2018--19 onwards (only five years of data, with two years affected by COVID); the health-condition measures apply to people with a limiting disability. Results are descriptive, not forecasts, and are shown in Figure~\ref{fig:P2.4}.
+
+\begin{figure}[!htb]
+\centering
+\includegraphics[width=\textwidth]{figures/figP2_4_health_activity}
+\caption{Activity by self-rated health, long-term condition and mental-health condition.}
+\label{fig:P2.4}
+\end{figure}
+
+\noindent
+Activity shows a strong and consistent health gradient, falling from 76\% among those reporting very good health to 20\% among those reporting very bad health. Among people with a limiting disability, those reporting a long-term condition are 21 percentage points less active than those without one (44\% vs 65\%), while the gap for mental-health conditions is smaller at 10 points (54\% vs 64\%). These results show a clear association between poorer health conditions and lower physical activity, although they do not establish causation.
+
+\FloatBarrier
+\subsection{P3 -- Indoor vs Outdoor Activity}
+
+\paragraph{The expected balance of indoor versus outdoor physical activity.}
+
+\noindent
+The projection extends only to 2025 and is based on a $\sim$30\% subsample, so it should be treated as indicative rather than a full ten-year forecast, as shown in Figure~\ref{fig:P3.1}.
+
+\begin{figure}[!htb]
+\centering
+\includegraphics[width=0.9\textwidth]{figures/figP3_1_indoor_outdoor_time}
+\caption{Indoor vs outdoor activity over time, observed 2016--2022 and projected to 2025.}
+\label{fig:P3.1}
+\end{figure}
+
+\noindent
+Outdoor activity remains substantially more common than indoor activity, at around 65--72\% compared with 29--42\% over the observed period. Both declined during COVID, but indoor participation fell more sharply, from 41\% in 2018 to 29\% in 2020, and had only partly recovered to 37\% by 2022. The indicative projection suggests indoor activity may fall further to 34\% by 2025, while outdoor activity remains broadly stable at 67\%, widening the gap between the two. However, this projection has a wide uncertainty range because it is based on the smaller subsample, so the figures should be interpreted directionally rather than as precise forecasts.
+
+\paragraph{Differences in indoor and outdoor activity preferences among people with varying activity levels.}
+
+\noindent
+Figure~\ref{fig:P3.2} shows how indoor and outdoor preference varies by activity level.
+
+\begin{figure}[!htb]
+\centering
+\begin{minipage}{0.34\textwidth}
+\centering
+\includegraphics[width=\textwidth]{figures/figP3_2a_indoor_outdoor_pref}
+\end{minipage}\hfill
+\begin{minipage}{0.33\textwidth}
+\centering
+\includegraphics[width=\textwidth]{figures/figP3_2b_indoor_outdoor_pref}
+\end{minipage}\hfill
+\begin{minipage}{0.33\textwidth}
+\centering
+\includegraphics[width=\textwidth]{figures/figP3_2c_indoor_outdoor_pref}
+\end{minipage}
+\caption{Indoor/outdoor preference by activity level, and where each activity level is active.}
+\label{fig:P3.2}
+\end{figure}
+
+\noindent
+Indoor activity differs much more by activity level than outdoor activity: Active respondents are more than twice as likely to participate indoors (52\% vs 23\%), while outdoor participation is already high (93\% vs 78\%). Street/road activity dominates outdoors (66\% vs 85\%) and changes least, whereas leisure-centre use shows the largest absolute increase (11\%$\rightarrow$32\%), followed by at-home activity (5\%$\rightarrow$16\%). Park and countryside/coast use also increase (2\%$\rightarrow$8\% and 8\%$\rightarrow$21\%). Overall, Fairly Active people mainly rely on accessible outdoor activity, while Active people are more likely to add indoor and a wider range of activity settings to their routine.
+
+\paragraph{Relationships between inner vs outer London locations, activity levels and socio-economic factors.}
+
+\noindent
+Figure~\ref{fig:P3.3} presents the interaction between location, socio-economic group, and indoor/outdoor activity.
+
+
+\begin{figure}[!htb]
+\centering
+\begin{minipage}{0.33\textwidth}
+\centering
+\includegraphics[width=\textwidth]{figures/figP3_3b_inner_outer_london}
+\end{minipage}\hfill
+\begin{minipage}{0.33\textwidth}
+\centering
+\includegraphics[width=\textwidth]{figures/figP3_3c_inner_outer_london}
+\end{minipage}\hfill
+\begin{minipage}{0.33\textwidth}
+\centering
+\includegraphics[width=\textwidth]{figures/figP3_3d_inner_outer_london}
+\end{minipage}
+\caption{Inner vs outer London $\times$ socio-economic group, indoor and outdoor activity.}
+\label{fig:P3.3}
+\end{figure}
+
+\noindent
+Inner London generally has a higher share of Active people than Outer London across all socio-economic groups, although the difference is relatively small for the Lower group (52\% vs 49\%) and larger for the Higher group (78\% vs 69\%). The reverse pattern is seen for inactivity, with Outer London consistently showing higher inactivity, particularly among the Higher group (19\% vs 13\%). Fairly Active rates are more mixed, with Outer London higher for the Lower and Middle groups but only slightly higher for the Higher group. Overall, socio-economic position remains the stronger divide, while location appears to widen or narrow these differences depending on activity level.
+
+\FloatBarrier
+\subsection{P4 -- Volunteering in Sport}
+
+\noindent
+\textbf{Data note:} volunteering cannot be reliably forecast because the survey question base changed across the years and demographics explain only around 15\% of borough-level variation. It is therefore reported descriptively rather than forecast at borough level.
+
+\paragraph{Current volunteering patterns across demographic groups.}
+
+\noindent
+
+\begin{figure}[!htb]
+\centering
+\includegraphics[width=\textwidth]{figures/figP4_1_volunteering_demographics}
+\caption{Volunteering in sport by background, pooled across waves. Described, not forecast.}
+\label{fig:P4.1}
+\end{figure}
+
+\noindent
+Volunteering is highest among younger adults, with 16--24-year-olds at 25\%, compared with 15\% among the 65+ group. Men also volunteer more than women (21\% vs 15\%), while there is a clear socio-economic gradient (19\% Higher vs 12\% Lower). In contrast, volunteering varies much less by ethnicity and disability, ranging from 15--20\% across ethnic groups and 15--19\% by disability status. Overall, age, gender and socio-economic background show stronger differences than ethnicity or disability.
+\newpage
+\paragraph{Volunteer role patterns across demographic groups.}
+
+\noindent
+
+\begin{figure}[!htb]
+\centering
+
+% Row 1: 3 figures
+\begin{minipage}{0.30\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{figures/figP4_2b_volunteer_roles}
+\end{minipage}
+\hfill
+\begin{minipage}{0.30\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{figures/figP4_2c_volunteer_roles}
+\end{minipage}
+\hfill
+\begin{minipage}{0.30\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{figures/figP4_2d_volunteer_roles}
+\end{minipage}
+
+
+\begin{minipage}{0.30\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{figures/figP4_2e_volunteer_roles}
+\end{minipage}
+\hspace{0.04\textwidth}
+\begin{minipage}{0.30\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{figures/figP4_2f_volunteer_roles}
+\end{minipage}
+
+\caption{Volunteer roles by demographic group, waves 2020--22.}
+\label{fig:P4.2}
+\end{figure}
+
+\noindent
+Organising/administration is the most consistent volunteer role across demographic groups, particularly among middle- and higher-income groups and most ethnicities. Younger adults stand out for more hands-on roles, with 16--24s highest in stewarding (10.1\%) and coaching (8.4\%). There is also a clear gender difference: men are more represented in coaching, officiating and stewarding, while women are more concentrated in organising and support. Lower socio-economic and some disability groups also show relatively higher reliance on stewarding/support roles.
+
+\FloatBarrier
+\section{Overall Synthesis}
+
+\noindent
+Taken together, the four parts of the analysis tell a fairly simple story about physical activity in London. London's overall activity levels are not changing dramatically, but underneath this stable picture there are important differences between groups and places. An ageing population creates a challenge because older people are consistently the least active, while some younger and more active groups help balance this out.
+
+Where people live also matters. The differences between boroughs become more noticeable for activities that need facilities, clubs or organised opportunities, such as indoor activity, leisure-centre use and sport. In contrast, simpler activities such as walking are more widely accessible. Volunteering shows the other side of this story: demographic differences are relatively small, suggesting that local opportunities and provision may matter more than who lives in an area.
+
+Overall, the findings suggest that London Sport cannot rely on one solution. Demographic change needs to be planned for, while improving access to facilities, organised activities and local opportunities could provide more direct ways of encouraging participation.
+
+\FloatBarrier
+\section{Limitations}
+
+\noindent
+The findings should be interpreted with several limitations in mind. The survey is cross-sectional rather than longitudinal, so it captures population-level patterns rather than changes within the same individuals over time. COVID-19 also disrupted parts of the time series, reducing the number of suitable years for some forecasts.
+
+Some outcomes, including volunteering and indoor/outdoor activity, have changes in question coverage or smaller subsamples and were therefore reported descriptively rather than as full ten-year forecasts. The analysis also identifies borough differences but cannot fully explain them without external data on factors such as facility availability, green space and cycling infrastructure. Finally, demographic forecasts should be treated as indicative estimates rather than precise predictions where those groups were not directly included in the population projections.
+
 
 % -----------------------------------------------------------------------------
 
 \chapter{Conclusion}
 \label{chap:conclusion}
 
-{\bf A compulsory chapter,  roughly 10\% of the total page-count}
-\vspace{1cm} 
+\section{Summary of Contributions}
 
-\noindent
-The concluding chapter(s) of a dissertation are often underutilized because they're 
-too often left too close to the deadline: it is important to allocate enough time and 
-attention to closing off the story, the narrative, of your thesis.
+This project addressed a gap in how the Active Lives Survey has typically been used: existing research describes historical participation but rarely forecasts future change. Using eight harmonised waves of the Active Lives Adult Survey (2015--16 to 2022--23) across London's 32 boroughs, the project developed a decision support framework that separates the relationship between individual demographic characteristics and activity level from projected changes in future population composition, avoiding the need to fit a conventional time series model to only 256 borough-year observations.
 
-Again, there is no single correct way of closing a thesis. 
-
-One good way of doing this is to have a single chapter consisting of three parts:
+Key contributions include:
 
 \begin{enumerate}
-\item (Re)summarise the main contributions and achievements, in essence
-      summing up the content.
-\item Clearly state the current project status (e.g., ``X is working, Y 
-      is not'') and evaluate what has been achieved with respect to the 
-      initial aims and objectives (e.g., ``I completed aim X outlined 
-      previously, the evidence for this is within Chapter Y'').  There 
-      is no problem including aims which were not completed, but it is 
-      important to evaluate and/or justify why this is the case.
-\item Outline any open problems or future plans.  Rather than treat this
-      only as an exercise in what you {\em could} have done given more 
-      time, try to focus on any unexplored options or interesting outcomes
-      (e.g., ``my experiment for X gave counter-intuitive results, this 
-      could be because Y and would form an interesting area for further 
-      study'' or ``users found feature Z of my software difficult to use,
-      which is obvious in hindsight but not during at design stage; to 
-      resolve this, I could clearly apply the technique of Bloggs {\em et al.}.
+    \item Harmonisation of eight structurally inconsistent survey waves (292--601 variables each) into a single dataset of 135,497 respondents with standardised ONS borough codes.
+    \item A propensity-based forecasting framework that decomposes forecasted change into a \emph{composition effect} (demographic shift) and a \emph{behaviour effect} (change within demographic groups), the project's most policy-relevant finding, showing that London's apparently stable overall activity rate masks an ageing-population headwind being offset by genuine behavioural improvement.
+    \item A four-model comparison (ordinal logistic regression, LightGBM, CatBoost with SHAP, K-Modes clustering, and Bayesian hierarchical modelling) under consistent time-based validation, with LightGBM selected as the final forecasting model (AUC 0.707, $\sim$16 minute runtime).
+    \item A composition--place decomposition showing borough identity explains a further 40 percentage points of between-borough variation beyond demographics alone (48\% $\rightarrow$ 88\%).
+    \item Application of the framework across four pillars --- overall participation, demographic differences, indoor/outdoor balance, and volunteering --- forecasting only where the data supported it and reporting descriptively elsewhere.
 \end{enumerate}
 
-Alternatively, you might want to divide this content into two chapters: a penultimate chapter with a title such as ``Further Work" and then a final chapter ``Conclusions". Again, there is no hard and fast rule, we trust you to make the right decision. 
+\section{Evaluation Against Aims and Objectives}
 
-And this, the final paragraph of this thesis template, is just a bunch of citations, added to show how to generate a BibTeX bibliography. Sources that have been randomly chosen to be cited here include:
-\cite{miller_etal_2018_clojure,webber_marwan_2015,touretzky_2013_lisp,eckmann_etal_1987,marwan_2011,vach_2015,shiller_2017,vytelingum_2006,tesfatsion_2002,rust_etal_1992}.
+All five objectives set out in Chapter~\ref{chap:introduction} were met. Harmonisation (Objective 1) is documented in Chapter~\ref{chap:methodology}. The propensity model was developed and benchmarked (Objective 2): the ordinal logistic regression offered near-identical performance to LightGBM (AUC 0.704 vs 0.707) with fully transparent coefficients, but the fuller comparison in Chapter~\ref{chap:evaluation} --- weighing runtime, non-linear interactions, and integration with forecasting --- favoured LightGBM as the production model, a reasonable trade-off given it retains feature-importance interpretability while handling the broader activity-type dataset better.
+
+Composition versus place effects (Objective 3) were established via the composition--place decomposition and corroborated independently by the Bayesian random-effects model and the CatBoost/SHAP residual analysis. The forecasting framework itself (Objective 4) is the project's central methodological contribution, directly addressing the eight-wave data limitation that ruled out conventional time series methods. Finally, the framework was applied across all four analytical pillars (Objective 5), with volunteering and indoor/outdoor activity correctly handled descriptively rather than forecast, given their more limited question coverage.
+
+The project therefore achieved its aim: an interpretable, borough-level forecasting framework was built and applied, producing results, notably the composition/behaviour decomposition and the persistent $\sim$24 point gap between the most and least active boroughs, directly usable by a non-technical stakeholder such as London Sport.
+
+\section{Limitations and Future Work}
+
+The survey's repeated cross-sectional design means the analysis captures population-level rather than within-individual change, and COVID-19 disruption reduced usable years for several sub-analyses (health-linked participation, indoor/outdoor split). Borough-level differences are not fully explained by demographic and survey data alone; incorporating external data such as facility density, green space, and cycling infrastructure is a natural next step to help distinguish environmental access from persistent local behaviour differences.
+
+Two further directions stand out. First, the Bayesian hierarchical model showed promise for quantifying borough-level forecast uncertainty but was constrained by long runtimes ($\sim$96 minutes) and limited posterior sampling; a more efficient implementation could move it from a corroborating role to a primary source of uncertainty estimates. Second, as further survey waves become available, volunteering and indoor/outdoor measures such as currently descriptive due to changing question bases and smaller subsamples, could be brought into the forecasting framework once a longer, more consistent time series exists.
 
 
 
