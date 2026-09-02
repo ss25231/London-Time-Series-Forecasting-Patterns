@@ -1,0 +1,19 @@
+dimension,group,vol_%,n
+Age,16-24,25.4,7327
+Age,25-44,16.2,34969
+Age,45-64,18.4,27567
+Age,65+,14.9,14780
+Gender,Male,20.5,37219
+Gender,Female,15.3,47550
+Ethnicity,White British,19.9,42287
+Ethnicity,White Other,14.6,13334
+Ethnicity,Asian,16.1,13408
+Ethnicity,Black,20.2,5306
+Ethnicity,Mixed/Other,17.0,5025
+Socio-economic group,Higher,19.3,50260
+Socio-economic group,Middle,16.9,14575
+Socio-economic group,Lower,12.1,7632
+Socio-economic group,Student/Other,22.6,7616
+Disability,Disabled (limiting),14.6,11207
+Disability,"Condition, not limiting",18.3,11981
+Disability,No disability,18.6,56355
