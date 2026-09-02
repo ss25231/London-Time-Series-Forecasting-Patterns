@@ -138,6 +138,7 @@ project/
 │   ├── DataScience_UoB_MSc_thesis(2).tex   ← the report source
 │   ├── dissertation.cls       ← document class / formatting
 │   ├── sample_bibtex.bib      ← bibliography
+│   ├── Team_04_Group_Report.pdf      ← group report
 │   ├── logo_uob_color.pdf     ← university logo used on the title page
 │   └── figures/               ← all figures used in the report
 │
