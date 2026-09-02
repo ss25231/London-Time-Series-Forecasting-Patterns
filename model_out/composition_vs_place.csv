@@ -1,0 +1,5 @@
+model,borough_corr,borough_MAE_pp,obs_spread_pp,pred_spread_pp,spread_reproduced_%,var_explained_%
+A. demographics only,0.9,3.59,6.85,3.29,48.0,81.0
+B. borough identity only,0.853,2.66,6.85,5.88,86.0,73.0
+C. demographics + borough,0.877,2.58,6.85,5.86,86.0,77.0
+"D. LOBO, demographics only",0.899,3.64,6.849999904632568,3.22,47.0,81.0
